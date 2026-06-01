@@ -8,15 +8,17 @@ Considere uma função escrita para calcular quantos dias faltam até o vencimen
 
 TypeScript resolve isso antes da execução.
 
-**O que é TypeScript, de fato**. TypeScript é um *superset* estrito de JavaScript. A palavra *superset* tem um significado preciso aqui: todo arquivo JavaScript válido é, ao mesmo tempo, um arquivo TypeScript válido. TypeScript não é uma linguagem diferente — é JavaScript com uma camada adicional opcional de anotações de tipo. Qualquer arquivo `.js` pode ser renomeado para `.ts` e continuará funcionando sem nenhuma alteração.
+**O que é TypeScript, de fato**. TypeScript é um ***superset*** estrito de JavaScript. A palavra *superset* tem um significado preciso aqui: todo arquivo JavaScript válido é, ao mesmo tempo, um arquivo TypeScript válido. TypeScript não é uma linguagem diferente — é JavaScript com uma camada adicional opcional de anotações de tipo. Qualquer arquivo `.js` pode ser renomeado para `.ts` e continuará funcionando sem nenhuma alteração.
 
-O que TypeScript adiciona ao JavaScript é um verificador estático. "Estático" significa: antes de executar. O verificador analisa o código como texto, examina os tipos declarados ou inferidos de cada variável e cada função, e sinaliza contradições antes que o programa rode. Se uma função está anotada para receber `number` e é chamada com `string`, o TypeScript sinalizará o erro antes de qualquer execução.
+O que TypeScript adiciona ao JavaScript é um **verificador estático**. "Estático" significa: antes de executar. O verificador analisa o código como texto, examina os tipos declarados ou inferidos de cada variável e cada função, e sinaliza contradições antes que o programa rode. Se uma função está anotada para receber `number` e é chamada com `string`, o TypeScript sinalizará o erro antes de qualquer execução.
 
 **Contexto de aplicação**. Em projetos profissionais com múltiplos arquivos e múltiplas pessoas, o verificador estático do TypeScript é o que impede que contratos entre partes do código sejam quebrados silenciosamente. Ao definir que uma função retorna um objeto com as propriedades `id` e `nome`, todo ponto de consumo dessa função sabe exatamente o que esperar — e o verificador garante que ninguém quebre esse contrato sem o código reclamar.
 
 **Por que TypeScript existe**. JavaScript foi criado em 1995 para scripts pequenos em páginas web. Conforme as aplicações cresceram em tamanho e complexidade, a ausência de tipos passou de irrelevante a problemática. TypeScript nasceu em 2012, mantido pela Microsoft, para trazer verificação estática ao ecossistema JavaScript sem exigir abandono da linguagem. Hoje é o padrão de fato em desenvolvimento profissional de aplicações JavaScript de qualquer tamanho.
 
 **O que TypeScript não é**. TypeScript não é uma linguagem de execução. Antes de rodar, as anotações de tipo são removidas e o que sobra é JavaScript puro. Nenhum navegador, nenhum servidor executa TypeScript diretamente — exceto, como será visto no próximo bloco, com um recurso específico do Node.js 24 que dispensa essa etapa manualmente.
+
+---
 
 ## Bloco 2 — *Type Stripping* no Node.js 24
 
@@ -26,9 +28,13 @@ A resposta tradicional envolvia uma etapa extra chamada compilação: executava-
 
 O Node.js 24 eliminou esse passo para o fluxo de desenvolvimento.
 
-**O que é *type stripping***. *Type stripping* (remoção de tipos) é o processo de remover as anotações de tipo de um arquivo TypeScript antes de executá-lo. O resultado é JavaScript puro — funcionalmente idêntico ao que se teria se as anotações nunca tivessem sido escritas. O Node.js 24 realiza esse processo nativamente, sem nenhuma ferramenta intermediária e nenhuma flag adicional.
+**Finalidade**. ***Type stripping*** (remoção de tipos) é o processo de remover as anotações de tipo de um arquivo TypeScript antes de executá-lo. O resultado é JavaScript puro — funcionalmente idêntico ao que se teria se as anotações nunca tivessem sido escritas. O Node.js 24 realiza esse processo nativamente, sem nenhuma ferramenta intermediária e nenhuma flag adicional.
 
-**Exemplo concreto**. Considere o seguinte conteúdo em um arquivo `playground.ts`:
+**Motivação**. Sem um mecanismo nativo de remoção de tipos, executar um arquivo `.ts` exigiria uma etapa de compilação prévia ou uma ferramenta intermediária a cada ciclo de desenvolvimento. O *type stripping* elimina essa fricção, tornando o fluxo de execução de TypeScript equivalente ao de JavaScript.
+
+**Decisão**. A implementação nativa no Node.js 24 dispensa ferramentas de terceiros como `ts-node` ou `tsx`, que historicamente cumpriam essa função. O curso proíbe explicitamente o uso dessas ferramentas: o recurso nativo é suficiente e elimina uma dependência desnecessária do projeto.
+
+**Localização**. O *type stripping* opera em todo arquivo `.ts` executado diretamente com `node`. O exemplo a seguir ilustra o processo. Considere o seguinte conteúdo em um arquivo `playground.ts`:
 
 ```typescript
 function greet(name: string): string {
@@ -36,7 +42,7 @@ function greet(name: string): string {
 };
 ```
 
-Ao executar `node playground.ts` no Node.js 24, o que o Node.js faz internamente é ler esse arquivo, remover `: string` das duas ocorrências, e executar o JavaScript resultante:
+Ao executar `node playground.ts` no Node.js 24, o Node.js lê esse arquivo, remove `: string` das duas ocorrências e executa o JavaScript resultante:
 
 ```javascript
 function greet(name) {
@@ -44,19 +50,17 @@ function greet(name) {
 };
 ```
 
-Esse JavaScript intermediário não é visível nem gravado em disco. O Node.js processa e executa diretamente.
+Esse JavaScript intermediário não é visível nem gravado em disco. O Node.js processa e executa diretamente. No módulo anterior, o Node.js era usado para executar arquivos `.js`. O fluxo deste módulo é o mesmo — os arquivos agora têm extensão `.ts`. O comando `node file.ts` funciona diretamente, sem nenhum passo extra.
 
-**Relevância para este módulo**. No módulo anterior, o Node.js era usado para executar arquivos `.js`. O fluxo deste módulo é o mesmo — os arquivos agora têm extensão `.ts`. O comando `node file.ts` funciona diretamente. Nenhum passo extra é necessário.
+É importante notar o que o *type stripping* não faz: ele remove as anotações e executa, mas não verifica se os tipos estão corretos. Se uma função está anotada para receber `number` mas é chamada com `string`, o Node.js executará mesmo assim — da mesma forma que JavaScript executaria. Execução e verificação são duas operações distintas no TypeScript. Executar com `node` roda o código; verificar com `tsc --noEmit` analisa os tipos. A verificação dos tipos é responsabilidade de um comando separado, apresentado no Bloco 8 desta parte.
 
-**O que o *type stripping* não faz**. *Type stripping* remove as anotações e executa. Ele não verifica se os tipos estão corretos. Se uma função está anotada para receber `number` mas é chamada com `string`, o Node.js executará mesmo assim — da mesma forma que JavaScript executaria. A verificação dos tipos é responsabilidade de um comando separado, o `tsc --noEmit`, que será apresentado no Bloco 8 desta parte.
+**Contrafactual**. Sem o *type stripping* nativo do Node.js 24, seria necessária uma ferramenta intermediária — historicamente `ts-node` ou `tsx` — para executar arquivos `.ts` diretamente. Essas ferramentas existem e funcionam, mas adicionam uma dependência ao projeto que o Node.js 24 tornou desnecessária.
 
-Isso significa que execução e verificação são duas operações distintas no TypeScript. Executar com `node` roda o código. Verificar com `tsc --noEmit` analisa os tipos. As duas operações são realizadas em momentos diferentes, com propósitos diferentes.
-
-**Contrafactual**. Sem o *type stripping* nativo do Node.js 24, seria necessária uma ferramenta intermediária — historicamente `ts-node` ou `tsx` — para executar arquivos `.ts` diretamente. Essas ferramentas existem e funcionam, mas adicionam uma dependência ao projeto que o Node.js 24 tornou desnecessária. Por isso o curso proíbe explicitamente o uso de `ts-node` e `tsx`: o recurso nativo é suficiente e mais simples.
+---
 
 ## Bloco 3 — Instalação Global Temporária
 
-Antes de escrever qualquer código TypeScript, é necessária a instalação de uma ferramenta: o compilador `tsc`.
+Antes de escrever qualquer código TypeScript, é necessária a instalação de uma ferramenta: o compilador **`tsc`**.
 
 O `tsc` é o compilador oficial do TypeScript, mantido pela Microsoft. É ele que executa o comando `tsc --noEmit` responsável pela verificação de tipos. Sem ele instalado, esse comando não estará disponível.
 
@@ -68,15 +72,15 @@ O comando para instalação é:
 npm install -g typescript
 ```
 
-**O que este comando faz**: instala o pacote `typescript` no diretório global do Node.js na máquina, tornando o comando `tsc` disponível em qualquer diretório do sistema.
+**Finalidade**. O comando `npm install -g typescript` instala o pacote `typescript` no diretório global do Node.js na máquina, tornando o executável `tsc` disponível em qualquer diretório do sistema.
 
-**Por que ele existe**: sem o compilador instalado, não há como executar a verificação de tipos com `tsc --noEmit`. O npm, por padrão, instala dependências dentro do projeto corrente; a flag `-g` redireciona essa instalação para o escopo global.
+**Motivação**. Sem o compilador instalado, não há como executar a verificação de tipos com `tsc --noEmit`. O npm, por padrão, instala dependências dentro do projeto corrente; a flag `-g` redireciona essa instalação para o escopo global.
 
-**Decisão técnica**: a instalação global é adotada exclusivamente nesta aula porque não há projeto configurado com `package.json`. A partir da Aula 2, o TypeScript será instalado localmente por projeto — o que garante que qualquer pessoa que clonar o repositório obtenha exatamente a mesma versão, sem depender do que está instalado globalmente em cada máquina.
+**Decisão**. A instalação global é adotada exclusivamente nesta aula porque não há projeto configurado com `package.json`. A partir da Aula 2, o TypeScript será instalado localmente por projeto — o que garante que qualquer pessoa que clonar o repositório obtenha exatamente a mesma versão, sem depender do que está instalado globalmente em cada máquina.
 
-**Onde é usado**: o comando `tsc --noEmit` executado no Bloco 8 desta aula depende diretamente desta instalação. Sem ela, o terminal retorna erro de comando não encontrado.
+**Localização**. O comando `tsc --noEmit` executado no Bloco 8 desta aula depende diretamente desta instalação. Sem ela, o terminal retorna erro de comando não encontrado.
 
-**Contrafactual**: sem a flag `-g` e sem um `package.json` no diretório corrente, o npm não teria onde registrar a dependência e a instalação falharia. Se a instalação fosse omitida inteiramente, o Bloco 8 desta parte falharia com comando não encontrado.
+**Contrafactual**. Sem a flag `-g` e sem um `package.json` no diretório corrente, o npm não teria onde registrar a dependência e a instalação falharia. Se a instalação fosse omitida inteiramente, o Bloco 8 desta parte falharia com comando não encontrado.
 
 Ao concluir, execute:
 
@@ -85,6 +89,8 @@ tsc --version
 ```
 
 O terminal exibirá a versão instalada, algo como `Version 6.x.x`.
+
+---
 
 Agora crie o diretório de experimentação:
 
@@ -99,6 +105,8 @@ code typescript-playground
 ```
 
 Dentro do VSCode, crie um arquivo chamado `playground.ts` na raiz desse diretório.
+
+---
 
 ## Bloco 4 — Tipos Primitivos
 
@@ -118,7 +126,7 @@ let active: boolean = true;
 
 O que está acontecendo em cada linha:
 
-A anotação `: string` na primeira linha é uma declaração de contrato. Ela diz ao TypeScript: "esta variável deve conter exclusivamente valores do tipo `string`". A partir do momento em que essa anotação existe, o verificador passa a monitorar todo lugar onde `name` é usado ou atribuído — e sinalizará erro se for atribuído um `number` ou `boolean` a ela.
+A anotação `: string` na primeira linha é uma declaração de contrato. Ela instrui o TypeScript a tratar esta variável como contendo exclusivamente valores do tipo `string`. A partir do momento em que essa anotação existe, o verificador passa a monitorar todo lugar onde `name` é usado ou atribuído — e sinalizará erro se for atribuído um `number` ou `boolean` a ela.
 
 A anotação `: number` na segunda linha faz o mesmo para números. Tanto inteiros quanto decimais são `number` em TypeScript — não existe `int` ou `float` como tipos separados, assim como no JavaScript.
 
@@ -134,6 +142,8 @@ description = 'Here contains a description.';
 Sem a anotação `: string` na primeira linha, o TypeScript assumiria o tipo `any` para `description` — o que desabilita a verificação. Com a anotação, o contrato está declarado desde a linha de declaração, antes mesmo de qualquer valor ser atribuído.
 
 **`null` e `undefined`**. Esses dois também são tipos em TypeScript. Um valor pode ser anotado como `null` quando representa ausência intencional de valor, e `undefined` quando representa ausência de atribuição.
+
+---
 
 ## Bloco 5 — Anotação em Variáveis
 
@@ -164,6 +174,8 @@ O segundo caso é o parâmetro de função — mas esse tem bloco próprio, o Bl
 
 **Contrafactual**. Anotar em todo lugar torna o código mais verboso sem ganho real de segurança. Não anotar onde a inferência não alcança faz o TypeScript assumir `any` e a verificação deixa de funcionar para aquele valor — o pior dos dois mundos: TypeScript no projeto com parte do código sem verificação.
 
+---
+
 ## Bloco 6 — Anotação em Parâmetros e Retorno de Função
 
 Parâmetros de função são o caso mais importante de anotação obrigatória em TypeScript — e o mais diretamente conectado ao problema que abriu esta aula.
@@ -192,9 +204,11 @@ function register(message: string): void {
 };
 ```
 
-`void` significa "esta função executa e não produz valor utilizável". É diferente de `undefined` — `void` é uma declaração de intenção, não um valor concreto.
+`void` significa *"esta função executa e não produz valor utilizável"*. É diferente de `undefined` — `void` é uma declaração de intenção, não um valor concreto.
 
 **Contrafactual**. Omitir a anotação do parâmetro faz o TypeScript assumir `any` e a função passa a aceitar qualquer valor sem verificação. O erro que abriu esta aula — passar `"7"` onde se esperava `7` — voltaria a ser possível silenciosamente, mesmo com TypeScript no projeto.
+
+---
 
 ## Bloco 7 — `any` e `unknown`
 
@@ -211,7 +225,7 @@ value.anyProperty;
 
 Nenhuma dessas linhas produz erro de tipo. O `any` é um buraco na verificação — um ponto cego onde o TypeScript simplesmente para de trabalhar.
 
-**Por que `any` existe**. `any` existe principalmente para migrações. Ao pegar um projeto JavaScript existente e começar a converter para TypeScript, é inviável anotar tudo de uma vez. O `any` permite migrar gradualmente: converte-se arquivo por arquivo, e os valores ainda não anotados ficam temporariamente como `any` sem quebrar o projeto inteiro. É uma ferramenta de transição, não de uso permanente.
+**Por que `any` existe**. `any` existe principalmente para migrações. Ao converter um projeto JavaScript existente para TypeScript, é inviável anotar tudo de uma vez. O `any` permite migrar gradualmente: converte-se arquivo por arquivo, e os valores ainda não anotados ficam temporariamente como `any` sem quebrar o projeto inteiro. É uma ferramenta de transição, não de uso permanente.
 
 **O perigo do `any` como padrão**. Usar `any` livremente significa ter TypeScript no projeto sem verificação real. É o pior cenário possível: a complexidade adicional da linguagem sem o benefício que a justifica. No projeto desenvolvido neste módulo, `any` explícito é evitado. Quando aparecer, será sinalizado.
 
@@ -231,30 +245,40 @@ const entry: unknown = 'value';
 if (typeof entry === 'string') console.log(entry.toUpperCase());
 ```
 
-Com o operador `typeof`, dentro do bloco `if`, o TypeScript sabe que `entry` é `string` — porque a verificação acabou de ocorrer. Esse processo de verificar o tipo antes de usar é chamado de *narrowing* (estreitamento de tipo), e é o mecanismo central de segurança do `unknown`.
+Com o operador `typeof`, dentro do bloco `if`, o TypeScript sabe que `entry` é `string` — porque a verificação acabou de ocorrer. Esse processo de verificar o tipo antes de usar é chamado de ***narrowing*** (estreitamento de tipo), e é o mecanismo central de segurança do `unknown`.
 
 **Contexto de aplicação de `unknown`**. `unknown` é o tipo correto para valores que chegam de fora do controle do código: o corpo de uma requisição HTTP, o resultado de um `JSON.parse`, dados lidos de um arquivo. O tipo da entrada não é conhecido com antecedência — pode ser qualquer coisa. `unknown` força a verificação antes do uso, o que é exatamente o comportamento correto para entrada externa.
 
-**A distinção prática**. `any` diz "confie em mim, eu sei o que é isso" — e o TypeScript obedece sem questionar. `unknown` diz "eu não sei o que é isso ainda" — e o TypeScript exige prova antes de permitir o uso. Em código profissional, quando o tipo é desconhecido, a escolha correta é `unknown`.
+**A distinção prática**. `any` diz *"confie em mim, eu sei o que é isso"* — e o TypeScript obedece sem questionar. `unknown` diz *"não se sabe o que é isso ainda"* — e o TypeScript exige prova antes de permitir o uso. Em código profissional, quando o tipo é desconhecido, a escolha correta é `unknown`.
+
+---
 
 ## Bloco 8 — Verificação por `tsc --noEmit`
 
-O comando `tsc --noEmit` foi utilizado nos blocos anteriores. Este bloco trata formalmente do que ele faz, por que existe nessa forma específica, e qual é o seu papel no fluxo de trabalho deste módulo.
+O comando `tsc --noEmit` foi mencionado nos blocos anteriores. Este bloco trata formalmente do que ele faz, por que existe nessa forma específica, e qual é o seu papel no fluxo de trabalho deste módulo.
 
-**O que `tsc` faz normalmente**. O compilador TypeScript, invocado como `tsc file.ts`, tem dois comportamentos simultâneos: verifica os tipos do arquivo e produz um arquivo `.js` correspondente com as anotações removidas. O arquivo `.js` é o artefato de saída — o que seria entregue para execução em um ambiente que não suporta TypeScript nativamente.
+**Finalidade**. O compilador TypeScript, invocado como `tsc file.ts`, tem dois comportamentos simultâneos: verifica os tipos do arquivo e produz um arquivo `.js` correspondente com as anotações removidas. A flag `--noEmit` instrui o `tsc` a executar apenas a verificação de tipos, sem produzir nenhum arquivo de saída. O nome é literal: *no emit* — não emite arquivos.
 
-**Por que `--noEmit`**. A flag `--noEmit` instrui o `tsc` a executar apenas a verificação de tipos, sem produzir nenhum arquivo de saída. O nome é literal: *no emit* — não emite arquivos.
+**Motivação**. No contexto deste módulo, produzir arquivos `.js` ao lado dos `.ts` criaria duplicatas desnecessárias no projeto. O Node.js 24 já executa arquivos `.ts` diretamente via *type stripping* — não há necessidade de um `.js` gerado para executar. O modo `--noEmit` isola a verificação de tipos como operação autônoma, sem efeitos colaterais no sistema de arquivos.
 
-No contexto deste módulo, `--noEmit` é o modo correto por dois motivos. Primeiro, o Node.js 24 já executa arquivos `.ts` diretamente via *type stripping* — não há necessidade de um `.js` gerado para executar. Segundo, produzir arquivos `.js` ao lado dos `.ts` criaria duplicatas desnecessárias no projeto, poluindo o diretório de trabalho.
+**Decisão**. A separação entre execução e verificação é uma decisão arquitetural do fluxo deste módulo. Executar com `node` e verificar com `tsc --noEmit` são operações com propósitos distintos, realizadas em momentos diferentes. Essa separação é mantida em todas as aulas deste módulo.
 
-**O que o comando reporta**. Quando há erros de tipo, `tsc --noEmit` lista cada erro com três informações: localização exata no formato `arquivo:linha:coluna`, código do erro no formato `TS` seguido de número, e descrição do problema em linguagem natural. Quando não há erros, o comando termina silenciosamente — nenhuma saída, código de saída zero. Silêncio é sucesso.
+**Localização**. O fluxo de trabalho adota dois comandos para trabalhar com TypeScript:
 
-**Contrafactual**. Executar `tsc --noEmit` sem o TypeScript instalado faz o terminal retornar erro de comando não encontrado. Executar `tsc file.ts` sem a flag `--noEmit` faz o TypeScript produzir um arquivo `file.js` no mesmo diretório — o que neste módulo é desnecessário e indesejado.
+```shell
+node file.ts
+```
 
-**O fluxo de trabalho deste módulo**. Ao longo das 20 aulas, dois comandos serão usados para trabalhar com TypeScript:
+Para executar — o Node.js 24 realiza o *type stripping* e roda o código.
 
-`node file.ts` — para executar. O Node.js 24 faz o *type stripping* e roda o código.
+```shell
+tsc --noEmit file.ts
+```
 
-`tsc --noEmit file.ts` — para verificar tipos. O compilador analisa os contratos e reporta violações.
+Para verificar tipos — o compilador analisa os contratos e reporta violações.
+
+Quando há erros de tipo, `tsc --noEmit` lista cada erro com três informações: localização exata no formato `arquivo:linha:coluna`, código do erro no formato `TS` seguido de número, e descrição do problema em linguagem natural. Quando não há erros, o comando termina silenciosamente — nenhuma saída, código de saída zero. Silêncio é sucesso.
 
 A partir da Aula 2, quando o `tsconfig.json` for configurado, o comando de verificação simplifica para `tsc --noEmit` sem especificar arquivo — o `tsconfig.json` declara quais arquivos verificar. Por ora, o arquivo é especificado explicitamente.
+
+**Contrafactual**. Executar `tsc --noEmit` sem o TypeScript instalado faz o terminal retornar erro de comando não encontrado. Executar `tsc file.ts` sem a flag `--noEmit` faz o TypeScript produzir um arquivo `file.js` no mesmo diretório — o que neste módulo é desnecessário e indesejado.
